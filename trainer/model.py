@@ -10,15 +10,17 @@ import cPickle
 
 from tensorflow.python.lib.io import file_io
 
+from keras.applications import vgg16
+
 
 def get_data(filename):
 	train_datagen = ImageDataGenerator(
         rescale=1./255,
-        data_format="channels_first",
+        data_format="channels_last",
         horizontal_flip=True)
 
 	train_generator = train_datagen.flow_from_directory(
-        'dataset',
+        filename,
         target_size=(244, 244),
         batch_size=32)
 
@@ -28,41 +30,6 @@ def get_data(filename):
 def define_model(weights_path=None):
 
 	model = Sequential()
-	model.add(ZeroPadding2D((1,1), input_shape=(3, 244, 244)))
-	model.add(Conv2D(64, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(64, (3, 3), activation='relu'))
-	model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), data_format="channels_first"))
-
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(128, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(128, (3, 3), activation='relu'))
-	model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), data_format="channels_first"))
-
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(256, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(256, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(256, (3, 3), activation='relu'))
-	model.add(MaxPooling2D((2,2), strides=(2,2), data_format="channels_first"))
-
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(MaxPooling2D((2,2), strides=(2,2), data_format="channels_first"))
-
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(ZeroPadding2D((1,1)))
-	model.add(Conv2D(512, (3, 3), activation='relu'))
-	model.add(MaxPooling2D((2,2), strides=(2,2), data_format="channels_first"))
 
 	model.add(Flatten())
 	model.add(Dense(4096, activation='relu'))
@@ -83,6 +50,28 @@ def define_model(weights_path=None):
 
 	return model
 
+def bottleneck_features(train_dir, batch_size=32):
+
+	model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(244, 244, 3))
+
+	train_datagen = ImageDataGenerator(
+        rescale=1./255,
+        data_format="channels_last",
+        horizontal_flip=True)
+
+	generator = train_datagen.flow_from_directory(
+        train_dir,
+        target_size=(244, 244),
+        batch_size=batch_size,
+        class_mode=None,
+        shuffle=False)
+
+	bottleneck_features_train = model.predict_generator(generator, 2000)
+
+	with file_io.FileIO('bottleneck_features_train.npy', mode='w+') as output:
+		np.save(output, bottleneck_features_train)
+
+
 def train_model(model, train_generator, steps_per_epoch=3):
 	model.fit_generator(train_generator, epochs=1, steps_per_epoch=steps_per_epoch)
 
@@ -92,7 +81,7 @@ def save_model(model, job_dir):
 	model.save('model.h5')
     
 	# Save model.h5 on to google storage
-	with file_io.FileIO('model.h5', mode='r') as input_f:
+	with file_io.FileIO('model.h5', mode='w') as input_f:
 		with file_io.FileIO(job_dir + '/model.h5', mode='w+') as output_f:
 			output_f.write(input_f.read())
 
@@ -114,15 +103,17 @@ def main():
 	args = parser.parse_args()
 	arguments = args.__dict__
 	job_dir = arguments.pop('job_dir')
+	train_dir = arguments['train_file']
 
-	train_generator = get_data(arguments['train_file'])
+	train_generator = get_data(train_dir)
+	bottleneck_features(train_dir)
 
 
 	#model = define_model(weights_path='weights/weights.h5py')
 
-	model = define_model()
+	#model = define_model()
 
-	model = train_model(model, train_generator)
+	#model = train_model(model, bottleneck_features_generator)
 	save_model(model, job_dir)
 
 	#np.save("my_weights", model.get_weights)
