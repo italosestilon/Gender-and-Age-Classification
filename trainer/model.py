@@ -54,7 +54,7 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 
 	#generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle = False, train_dir=train_dir)
 
-	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=1)
+	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=job_type)
 
 	j = 0
 	n = number_of_samples/batch_size
