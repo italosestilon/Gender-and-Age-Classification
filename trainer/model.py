@@ -9,6 +9,7 @@ from io import BytesIO
 
 import cPickle
 import pickle
+import math
 
 from tensorflow.python.lib.io import file_io
 
@@ -112,7 +113,8 @@ class DataGenerator(object):
 			indexes = self.__get_exploration_order(list_IDs)
 		
 			# Generate batches
-			imax = int(len(indexes)/self.batch_size)
+			imax = int(math.ceil(len(indexes)/self.batch_size))
+
 			for i in range(imax):
 				#print("i generate", i)
 				# Find list of IDs
@@ -137,7 +139,7 @@ class DataGenerator(object):
 		# Initialization
 		X = np.empty((self.batch_size, self.dim_x, self.dim_y, self.dim_z))
 		y = np.empty((self.batch_size), dtype = int)
-		
+
 		if(self.data_type == 0):
 			from skimage import io
 		# Generate data
@@ -208,7 +210,7 @@ def main():
 	if(job_type == "1"):
 		input_shape = (6,5,512)
 		model = define_model(input_shape=input_shape)
-		train_generator, _ = get_data(train_dir, batch_size=25, input_shape=input_shape, shuffle=True)
+		train_generator, _ = get_data(train_dir, batch_size=32, input_shape=input_shape, shuffle=True)
 		model = train_model(model, train_generator, epochs=10, steps_per_epoch=100)
 		save_model(model, job_dir)
 
