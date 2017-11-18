@@ -97,9 +97,6 @@ class DataGenerator(object):
 		self.shuffle = shuffle
 		self.data_type = data_type
 
-		if(self.data_type == 0):
-			from skimage import io
-
 		if train_dir == None:
 			print "Thunderfuck passou aqui! Deu erro abestado. Ai dento!! Iiiihhii!"
 			raise ValueError
@@ -140,7 +137,9 @@ class DataGenerator(object):
 		# Initialization
 		X = np.empty((self.batch_size, self.dim_x, self.dim_y, self.dim_z))
 		y = np.empty((self.batch_size), dtype = int)
-
+		
+		if(self.data_type == 0):
+			from skimage import io
 		# Generate data
 		for i, ID in enumerate(list_IDs_temp):
 			#print(ID)
