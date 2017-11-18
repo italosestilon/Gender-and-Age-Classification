@@ -14,25 +14,25 @@ from tensorflow.python.lib.io import file_io
 
 from keras.applications import vgg16
 
-def get_data(train_dir, batch_size=32, input_shape=(32, 32, 3)):
+def get_data(train_dir, batch_size=32, input_shape=(32, 32, 3), shuffle=False, job_type=1):
 
 	with file_io.FileIO(train_dir +"/id.txt", mode='r') as input_fn:
 		ids = pickle.load(input_fn)
 	
-	generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle=False, train_dir=train_dir)
+	generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle=shuffle, train_dir=train_dir, data_type=job_type)
 
 	train_generator = generator.generate(ids)
 
 	return train_generator, ids
 
 
-def define_model(weights_path=None):
+def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	model = Sequential()
-	model.add(Flatten(input_shape=(8,8,512)))
-	model.add(Dense(4096, activation='relu'))
+	model.add(Flatten(input_shape=input_shape))
+	model.add(Dense(input_shape[1]*input_shape[2], activation='relu'))
 	model.add(Dropout(0.5))
-	model.add(Dense(4096, activation='relu'))
+	model.add(Dense(input_shape[1]*input_shape[2], activation='relu'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
@@ -67,13 +67,13 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 		y = model.predict(X_batch)
 
 		for sample in range(y.shape[0]):
-			with file_io.FileIO(output_dir+'/'+str(np.argmax(y_batch[sample]))+'/' + ids[j] , mode='w+') as output:
+			with file_io.FileIO(output_dir+'/'+str(np.argmax(y_batch[sample])).zfill(2)+'/' + ids[j] , mode='w+') as output:
 				np.save(output, y[sample])
 				j = j + 1
 
 
-def train_model(model, train_generator, steps_per_epoch=3):
-	model.fit_generator(train_generator, epochs=1, steps_per_epoch=steps_per_epoch)
+def train_model(model, train_generator, epochs=20, steps_per_epoch=100):
+	model.fit_generator(train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
 
 	return model
 
@@ -88,13 +88,17 @@ def save_model(model, job_dir):
 
 class DataGenerator(object):
 	'Generates data for Keras'
-	def __init__(self, dim_x = 32, dim_y = 32, dim_z = 32, batch_size = 32, shuffle = False, train_dir=None):
+	def __init__(self, dim_x = 32, dim_y = 32, dim_z = 32, batch_size = 32, shuffle = False, train_dir=None, data_type=1):
 		'Initialization'
 		self.dim_x = dim_x
 		self.dim_y = dim_y
 		self.dim_z = dim_z
 		self.batch_size = batch_size
 		self.shuffle = shuffle
+		self.data_type = data_type
+
+		if(self.data_type == 0):
+			from skimage import io
 
 		if train_dir == None:
 			print "Thunderfuck passou aqui! Deu erro abestado. Ai dento!! Iiiihhii!"
@@ -142,9 +146,13 @@ class DataGenerator(object):
 			#print(ID)
 			#print("Entrou para pegar dados do bucket")
 			#print(ID.split('.')[0])
-			f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0]) + "/" + ID))
+			#f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0]) + "/" + ID))
 			# Store volume
-			X[i, :, :, :] = np.load(f)
+			if(self.data_type == 1):
+				f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0:2]) + "/" + ID))
+				X[i, :, :, :] = np.load(f)
+			elif(self.data_type == 0):
+				X[i, :, :, :] = io.imread(self.train_dir +"/" + str(ID[0:2]) + "/" + ID)
 
 			# Store class
 			y[i] = int(ID[0])
@@ -199,14 +207,16 @@ def main():
 	
 
 	if(job_type == "1"):
-		model = define_model()
-		model = train_model(model, train_generator)
+		input_shape = (6,5,512)
+		model = define_model(input_shape=input_shape)
+		train_generator, _ = get_data(train_dir, batch_size=25, input_shape=input_shape, shuffle=True)
+		model = train_model(model, train_generator, epochs=10, steps_per_epoch=100)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):
 		if(arguments['predict_dir']):
 			output_predict = arguments['predict_dir']
-			bottleneck_features(train_dir, batch_size=25, number_of_samples=2000, input_shape=(218, 178, 3), output_dir=output_predict)
+			bottleneck_features(train_dir, batch_size=69, number_of_samples=162771, input_shape=(218, 178, 3), output_dir=output_predict)
 		else:
 			print("The predict output dir has not been provided.")
 
