@@ -48,13 +48,13 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	return model
 
-def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), output_dir="vgg_preditc"):
+def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), output_dir="vgg_preditc", job_type=1):
 
 	model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
 
 	#generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle = False, train_dir=train_dir)
 
-	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape)
+	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=1)
 
 	j = 0
 	n = number_of_samples/batch_size
@@ -216,7 +216,7 @@ def main():
 	elif(job_type == "0"):
 		if(arguments['predict_dir']):
 			output_predict = arguments['predict_dir']
-			bottleneck_features(train_dir, batch_size=69, number_of_samples=162771, input_shape=(218, 178, 3), output_dir=output_predict)
+			bottleneck_features(train_dir, batch_size=69, number_of_samples=162771, input_shape=(218, 178, 3), output_dir=output_predict, job_type=int(job_type))
 		else:
 			print("The predict output dir has not been provided.")
 
