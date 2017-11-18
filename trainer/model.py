@@ -5,38 +5,36 @@ from keras.layers.convolutional import Conv2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import SGD
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
+from io import BytesIO
 
 import cPickle
+import pickle
 
 from tensorflow.python.lib.io import file_io
 
 from keras.applications import vgg16
 
+def get_data(train_dir, batch_size=32, input_shape=(32, 32, 3)):
 
-def get_data(filename):
-	train_datagen = ImageDataGenerator(
-        rescale=1./255,
-        data_format="channels_last",
-        horizontal_flip=True)
+	with file_io.FileIO(train_dir +"/id.txt", mode='r') as input_fn:
+		ids = pickle.load(input_fn)
+	
+	generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle=False, train_dir=train_dir)
 
-	train_generator = train_datagen.flow_from_directory(
-        filename,
-        target_size=(244, 244),
-        batch_size=32)
+	train_generator = generator.generate(ids)
 
-	return train_generator
+	return train_generator, ids
 
 
 def define_model(weights_path=None):
 
 	model = Sequential()
-
-	model.add(Flatten())
+	model.add(Flatten(input_shape=(8,8,512)))
 	model.add(Dense(4096, activation='relu'))
 	model.add(Dropout(0.5))
 	model.add(Dense(4096, activation='relu'))
 	model.add(Dropout(0.5))
-	model.add(Dense(57, activation='softmax'))
+	model.add(Dense(2, activation='softmax'))
 
 	if weights_path:
 		weights = np.load(weights_path)
@@ -50,26 +48,28 @@ def define_model(weights_path=None):
 
 	return model
 
-def bottleneck_features(train_dir, batch_size=32):
+def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), output_dir="vgg_preditc"):
 
-	model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(244, 244, 3))
+	model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
 
-	train_datagen = ImageDataGenerator(
-        rescale=1./255,
-        data_format="channels_last",
-        horizontal_flip=True)
+	#generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle = False, train_dir=train_dir)
 
-	generator = train_datagen.flow_from_directory(
-        train_dir,
-        target_size=(244, 244),
-        batch_size=batch_size,
-        class_mode=None,
-        shuffle=False)
+	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape)
 
-	bottleneck_features_train = model.predict_generator(generator, 2000)
+	j = 0
+	n = number_of_samples/batch_size
+	for i in range(n):
 
-	with file_io.FileIO('bottleneck_features_train.npy', mode='w+') as output:
-		np.save(output, bottleneck_features_train)
+		print("Predicting batch {}/{}".format(i, n))
+
+		X_batch, y_batch = predict_generator.next()
+
+		y = model.predict(X_batch)
+
+		for sample in range(y.shape[0]):
+			with file_io.FileIO(output_dir+'/'+str(np.argmax(y_batch[sample]))+'/' + ids[j] , mode='w+') as output:
+				np.save(output, y[sample])
+				j = j + 1
 
 
 def train_model(model, train_generator, steps_per_epoch=3):
@@ -81,9 +81,85 @@ def save_model(model, job_dir):
 	model.save('model.h5')
     
 	# Save model.h5 on to google storage
-	with file_io.FileIO('model.h5', mode='w') as input_f:
-		with file_io.FileIO(job_dir + '/model.h5', mode='w+') as output_f:
+	with file_io.FileIO('model.h5', mode='r') as input_f:
+		with file_io.FileIO(job_dir + '/model.h5', mode='w') as output_f:
 			output_f.write(input_f.read())
+
+
+class DataGenerator(object):
+	'Generates data for Keras'
+	def __init__(self, dim_x = 32, dim_y = 32, dim_z = 32, batch_size = 32, shuffle = False, train_dir=None):
+		'Initialization'
+		self.dim_x = dim_x
+		self.dim_y = dim_y
+		self.dim_z = dim_z
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+
+		if train_dir == None:
+			print "Thunderfuck passou aqui! Deu erro abestado. Ai dento!! Iiiihhii!"
+			raise ValueError
+
+		self.train_dir = train_dir
+
+	def generate(self, list_IDs):
+		self.list_IDs = list_IDs
+		'Generates batches of samples'
+		# Infinite loop
+		while 1:
+			# Generate order of exploration of dataset
+			indexes = self.__get_exploration_order(list_IDs)
+		
+			# Generate batches
+			imax = int(len(indexes)/self.batch_size)
+			for i in range(imax):
+				#print("i generate", i)
+				# Find list of IDs
+				list_IDs_temp = [list_IDs[k] for k in indexes[i*self.batch_size:(i+1)*self.batch_size]]
+
+				# Generate data
+				X, y = self.__data_generation(list_IDs_temp)
+
+				yield X, y
+
+	def __get_exploration_order(self, list_IDs):
+		'Generates order of exploration'
+		# Find exploration order
+		indexes = np.arange(len(list_IDs))
+		if self.shuffle == True:
+			np.random.shuffle(indexes)
+
+		return indexes
+
+	def __data_generation(self, list_IDs_temp):
+		'Generates data of batch_size samples' # X : (n_samples, v_size, v_size, v_size, n_channels)
+		# Initialization
+		X = np.empty((self.batch_size, self.dim_x, self.dim_y, self.dim_z))
+		y = np.empty((self.batch_size), dtype = int)
+
+		# Generate data
+		for i, ID in enumerate(list_IDs_temp):
+			#print(ID)
+			#print("Entrou para pegar dados do bucket")
+			#print(ID.split('.')[0])
+			f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0]) + "/" + ID))
+			# Store volume
+			X[i, :, :, :] = np.load(f)
+
+			# Store class
+			y[i] = int(ID[0])
+
+			#print("joao sucks",y[i])
+		#print("Retornando um batch")
+		return X, self.sparsify(y)
+
+	def sparsify(self, y):
+		'Returns labels in binary NumPy array'
+		n_classes = 2 # Enter number of classes
+		return np.array([[1 if y[i] == j else 0 for j in range(n_classes)]
+			for i in range(y.shape[0])])
+		#print("terminou de sparsify", y)
+
 
 def main():
 
@@ -100,23 +176,50 @@ def main():
 		help='GCS location to write checkpoints and export models',
 		required=True
 	)
+
+	parser.add_argument(
+		'--job-type',
+		help='The type of job. It is 1 if it a normal job. It is 0 if the job is for getting the predict from vgg16.',
+		required=True
+	)
+
+	parser.add_argument(
+		'--predict-dir',
+		help='Dir to save the predict form vgg',
+		required=False
+	)
+
 	args = parser.parse_args()
 	arguments = args.__dict__
 	job_dir = arguments.pop('job_dir')
 	train_dir = arguments['train_file']
+	job_type = arguments['job_type']
 
-	train_generator = get_data(train_dir)
-	bottleneck_features(train_dir)
+	#train_generator = get_data(train_dir)
+	
+
+	if(job_type == "1"):
+		model = define_model()
+		model = train_model(model, train_generator)
+		save_model(model, job_dir)
+
+	elif(job_type == "0"):
+		if(arguments['predict_dir']):
+			output_predict = arguments['predict_dir']
+			bottleneck_features(train_dir, batch_size=25, number_of_samples=2000, input_shape=(218, 178, 3), output_dir=output_predict)
+		else:
+			print("The predict output dir has not been provided.")
+
+			raise ValueError
 
 
-	#model = define_model(weights_path='weights/weights.h5py')
+	else:
+		print("Invalid job type.")
+		raise ValueError
+	
 
-	#model = define_model()
+	#np.save("my_weights", model.get_weights)[]
 
-	#model = train_model(model, bottleneck_features_generator)
-	save_model(model, job_dir)
-
-	#np.save("my_weights", model.get_weights)
 
 if __name__ == "__main__":
 	main()

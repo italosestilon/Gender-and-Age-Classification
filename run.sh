@@ -9,4 +9,15 @@ gcloud ml-engine jobs submit training $JOB_NAME  \
 --package-path ./trainer/ \
 --region $REGION \
 --\
- --train-file gs://$BUCKET/age/train/
+ --train-file gs://$BUCKET/NP_CELEB/train \
+ --job-type 0 \
+ --predict-dir gs://$BUCKET/vgg_predict_6
+
+#gcloud ml-engine local train \
+#--job-dir output \
+#--module-name trainer.model \
+#--package-path ./trainer/ \
+#--\
+# --train-file ../NP_CELEB/train \
+# --job-type 0 \
+# --predict-dir vgg_predict
