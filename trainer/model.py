@@ -91,7 +91,7 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 
 
 def train_model(model, train_generator, epochs=20, steps_per_epoch=100):
-	model.fit_generator(train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
+	model.fit_generator(train_generator, epochs=epochs,steps_per_epoch=steps_per_epoch )
 
 	return model
 
@@ -276,15 +276,16 @@ def main():
                     epochs = int(arguments['epochs'])
                 else:
                     epochs = 10
-                if(arguments['epochs_steps']):
-                    steps_per_epoch = int(arguments['epochs_steps'])
-                else:
-                    steps_per_epoch= 100
                 input_shape = discover_input_shape(train_dir)
                 print "Input Shape:",input_shape
 		model = define_model(input_shape=input_shape)
 		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
-		model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
+                if(arguments['epochs_steps']):
+                    steps_per_epoch = int(arguments['epochs_steps'])
+		    model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
+                else:
+                    steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
+		    model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):

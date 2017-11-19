@@ -14,9 +14,8 @@ if [ "$op" = "local" ]; then
 		--train-file /data/vgg_predict \
 		--job-type 1 \
 		--predict-dir /data/train_predict \
-        --batch-size 100 \
-        --epochs 30 \
-        --epochs-steps 100
+        --batch-size 128 \
+        --epochs 30 
 	else 
 		echo "$op"
 		gcloud ml-engine jobs submit training $JOB_NAME  \
