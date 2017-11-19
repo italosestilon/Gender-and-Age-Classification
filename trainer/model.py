@@ -230,7 +230,6 @@ def main():
             print "(W) Batch_size not defined and will be set equal 32"
             batch_size=32
         print batch_size
-        exit()
         #train_generator = get_data(train_dir)
 	
 
