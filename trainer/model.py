@@ -58,7 +58,7 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=job_type)
 
 	j = 0
-	n = number_of_samples/batch_size
+	n = int(math.ceil(number_of_samples/float(batch_size)))
 	for i in range(n):
 
 		print("Predicting batch {}/{}".format(i, n))
@@ -156,7 +156,7 @@ class DataGenerator(object):
 				X[i, :, :, :] = io.imread(self.train_dir +"/" + str(ID[0:2]) + "/" + ID)
 
 			# Store class
-			y[i] = int(ID[0])
+			y[i] = int(ID[0:2])
 
 			#print("joao sucks",y[i])
 		#print("Retornando um batch")
