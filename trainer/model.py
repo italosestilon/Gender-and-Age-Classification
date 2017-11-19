@@ -1,3 +1,16 @@
+################################################################
+# Project: Neural Network for age and gender estimation 
+# Authors Italos __complete me__ Estilon
+#         João Phillipe Cardenuto 
+# Universidade Estadual de Campinas
+#
+#'''
+#2017 (c) MIT License
+#
+#TODO:
+#
+#
+################################################################
 import argparse
 from keras.models import Sequential
 from keras.layers.core import Flatten, Dense, Dropout
@@ -175,13 +188,26 @@ class DataGenerator(object):
 
 def discover_num_samples(train_dir = None):
     if train_dir == None:
-        raise IOError("File id.tx Variable train_dir not initialized")
+        raise IOError("File id.txt Variable train_dir not initialized")
     try:
         num_samples = np.load(train_dir+"/id.txt")
     except IOError:
         print "File id.txt not Found, or not in pickle.dump type"
     else:
         return len(num_samples)
+
+def discover_input_shape(train_dir = None):
+    if train_dir == None:
+        raise IOError("File id.txt Variable train_dir not initialized")
+    try:
+        num_samples = np.load(train_dir+"/id.txt")
+    except IOError:
+        print "File id.txt not Found, or not in pickle.dump type"
+    else:
+
+        sample_path = num_samples[0]
+        sample = np.load(train_dir+"/"+sample_path[0:2]+"/"+sample_path)
+        return sample.shape
 
 
 def main():
@@ -218,6 +244,17 @@ def main():
 		required=False
 	)
 
+	parser.add_argument(
+		'--epochs',
+		help='Number of epochs in training',
+		required=False
+	)
+	parser.add_argument(
+		'--epochs-steps',
+		help='Number of steps in each epoch',
+		required=False
+	)
+
 	args = parser.parse_args()
 	arguments = args.__dict__
 	job_dir = arguments.pop('job_dir')
@@ -225,19 +262,29 @@ def main():
 	job_type = arguments['job_type']
 
         if(arguments['batch_size']):
-            batch_size = arguments['batch_size']
+            batch_size = int(arguments['batch_size'])
         else:
             print "(W) Batch_size not defined and will be set equal 32"
             batch_size=32
-        print batch_size
+        print "Batch Size:",batch_size
         #train_generator = get_data(train_dir)
 	
 
 	if(job_type == "1"):
-		input_shape = (6,5,512)
+                
+                if(arguments['epochs']):
+                    epochs = int(arguments['epochs'])
+                else:
+                    epochs = 10
+                if(arguments['epochs_steps']):
+                    steps_per_epoch = int(arguments['epochs_steps'])
+                else:
+                    steps_per_epoch= 100
+                input_shape = discover_input_shape(train_dir)
+                print "Input Shape:",input_shape
 		model = define_model(input_shape=input_shape)
 		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
-		model = train_model(model, train_generator, epochs=10, steps_per_epoch=100)
+		model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):

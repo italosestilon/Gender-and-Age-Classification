@@ -7,13 +7,16 @@ op=$1
 if [ "$op" = "local" ]; then
 		echo "$op"
 		gcloud ml-engine local train \
-		--job-dir output \
+		--job-dir ./output \
 		--module-name trainer.model \
 		--package-path ./trainer/ \
 		--\
-		--train-file vgg_predict_6 \
+		--train-file /data/vgg_predict \
 		--job-type 1 \
-		--predict-dir vgg_predict
+		--predict-dir /data/train_predict \
+        --batch-size 100 \
+        --epochs 30 \
+        --epochs-steps 100
 	else 
 		echo "$op"
 		gcloud ml-engine jobs submit training $JOB_NAME  \
@@ -24,6 +27,7 @@ if [ "$op" = "local" ]; then
 		--\
 		--train-file gs://$BUCKET/NP_CELEB/train \
 		--job-type 0 \
-		--predict-dir gs://$BUCKET/vgg_predict_7		
+		--predict-dir gs://$BUCKET/vgg_predict_7 \		
+        --batch-size 4
 
 fi
