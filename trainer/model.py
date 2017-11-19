@@ -68,9 +68,13 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 		y = model.predict(X_batch)
 
 		for sample in range(y.shape[0]):
-			with file_io.FileIO(output_dir+'/'+str(np.argmax(y_batch[sample])).zfill(2)+'/' + ids[j] , mode='w+') as output:
-				np.save(output, y[sample])
-				j = j + 1
+                    try:
+                        with file_io.FileIO(output_dir+'/'+str(np.argmax(y_batch[sample])).zfill(2)+'/' + ids[j] , mode='w+') as output:
+                            np.save(output, y[sample])
+                            j = j + 1
+                    except: 
+                        print "Warning one batch is not FULL"
+                        break
 
 
 def train_model(model, train_generator, epochs=20, steps_per_epoch=100):
@@ -169,6 +173,16 @@ class DataGenerator(object):
 			for i in range(y.shape[0])])
 		#print("terminou de sparsify", y)
 
+def discover_num_samples(train_dir = None):
+    if train_dir == None:
+        raise IOError("File id.tx Variable train_dir not initialized")
+    try:
+        num_samples = np.load(train_dir+"/id.txt")
+    except IOError:
+        print "File id.txt not Found, or not in pickle.dump type"
+    else:
+        return len(num_samples)
+
 
 def main():
 
@@ -198,26 +212,40 @@ def main():
 		required=False
 	)
 
+	parser.add_argument(
+		'--batch-size',
+		help='Numbers of batch for NN train',
+		required=False
+	)
+
 	args = parser.parse_args()
 	arguments = args.__dict__
 	job_dir = arguments.pop('job_dir')
 	train_dir = arguments['train_file']
 	job_type = arguments['job_type']
 
-	#train_generator = get_data(train_dir)
+        if(arguments['batch_size']):
+            batch_size = arguments['batch_size']
+        else:
+            print "(W) Batch_size not defined and will be set equal 32"
+            batch_size=32
+        print batch_size
+        exit()
+        #train_generator = get_data(train_dir)
 	
 
 	if(job_type == "1"):
 		input_shape = (6,5,512)
 		model = define_model(input_shape=input_shape)
-		train_generator, _ = get_data(train_dir, batch_size=32, input_shape=input_shape, shuffle=True)
+		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
 		model = train_model(model, train_generator, epochs=10, steps_per_epoch=100)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):
 		if(arguments['predict_dir']):
-			output_predict = arguments['predict_dir']
-			bottleneck_features(train_dir, batch_size=69, number_of_samples=162771, input_shape=(218, 178, 3), output_dir=output_predict, job_type=int(job_type))
+                    number_of_samples = discover_num_samples(train_dir)
+                    output_predict = arguments['predict_dir']
+                    bottleneck_features(train_dir, batch_size=batch_size, number_of_samples=number_of_samples, input_shape=(218, 178, 3), output_dir=output_predict, job_type=int(job_type))
 		else:
 			print("The predict output dir has not been provided.")
 
