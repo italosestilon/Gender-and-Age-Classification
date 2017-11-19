@@ -113,7 +113,7 @@ class DataGenerator(object):
 			indexes = self.__get_exploration_order(list_IDs)
 		
 			# Generate batches
-			imax = int(math.ceil(len(indexes)/self.batch_size))
+			imax = int(math.ceil(len(indexes)/float(self.batch_size)))
 
 			for i in range(imax):
 				#print("i generate", i)
