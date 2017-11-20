@@ -44,9 +44,9 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	model = Sequential()
 	model.add(Flatten(input_shape=input_shape))
-	model.add(Dense(input_shape[1]*input_shape[2], activation='relu'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
 	model.add(Dropout(0.5))
-	model.add(Dense(input_shape[1]*input_shape[2], activation='relu'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
