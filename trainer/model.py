@@ -16,6 +16,7 @@ from keras.models import Sequential
 from keras.layers.core import Flatten, Dense, Dropout
 from keras.layers.convolutional import Conv2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import SGD
+from keras.models import model_from_json
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from io import BytesIO
@@ -110,10 +111,18 @@ def train_model(model, train_generator, epochs=20, steps_per_epoch=100):
 
 def save_model(model, job_dir):
 	model.save('model.h5')
+        # serialize model to JSON
+        model_json = model.to_json()
+        with open("model.json", "w") as json_file:
+                json_file.write(model_json)
     
 	# Save model.h5 on to google storage
 	with file_io.FileIO('model.h5', mode='r') as input_f:
 		with file_io.FileIO(job_dir + '/model.h5', mode='w') as output_f:
+			output_f.write(input_f.read())
+        #Sava ArchModel in google
+	with file_io.FileIO('model.json', mode='r') as input_f:
+		with file_io.FileIO(job_dir + '/model.json', mode='w') as output_f:
 			output_f.write(input_f.read())
 
 
