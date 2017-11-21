@@ -7,15 +7,18 @@ op=$1
 if [ "$op" = "local" ]; then
 		echo "$op"
 		gcloud ml-engine local train \
-		--job-dir ./output \
+		--job-dir ./output/2hard_sig/ \
 		--module-name trainer.model \
 		--package-path ./trainer/ \
 		--\
 		--train-file /data/vgg_predict \
-		--job-type 1 \
-		--predict-dir /data/train_predict \
+        --valid-file /data/valid_imagenet \
+        --model-file output/sig2_acc86.h5 \
+		--job-type 2 \
+		--predict-dir /data/validation_predict \
         --batch-size 128 \
         --epochs 200 
+
 	else 
 		echo "$op"
 		gcloud ml-engine jobs submit training $JOB_NAME  \

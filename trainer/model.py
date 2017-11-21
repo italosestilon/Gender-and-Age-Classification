@@ -44,9 +44,9 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	model = Sequential()
 	model.add(Flatten(input_shape=input_shape))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='hard_sigmoid'))
 	model.add(Dropout(0.5))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='hard_sigmoid'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
@@ -62,15 +62,23 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	return model
 
-def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), output_dir="vgg_preditc", job_type=1):
+def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), \
+        output_dir="vgg_preditc", job_type=1 ,passing_model = None):
 
-	model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+        if(job_type == 1):
+	    model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+        elif (job_type == 2 and passing_model ):
+            model = passing_model
+        else:
+            print (" Error type_job in bottleneck_features function or model not defined")
+            raise ValueError
 
 	#generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle = False, train_dir=train_dir)
 
 	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=job_type)
 
 	j = 0
+        error = 0
 	n = int(math.ceil(number_of_samples/float(batch_size)))
 	for i in range(n):
 
@@ -86,7 +94,12 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
                             np.save(output, y[sample])
                             j = j + 1
                     except: 
-                        print "Warning one batch is not FULL"
+                        if(error):
+                            print "Dir not Found"
+                            raise
+                        print "Warning one batch is not FULL, or dir not found"
+                        error+=1
+
                         break
 
 
@@ -116,7 +129,6 @@ class DataGenerator(object):
 		self.data_type = data_type
 
 		if train_dir == None:
-			print "Thunderfuck passou aqui! Deu erro abestado. Ai dento!! Iiiihhii!"
 			raise ValueError
 
 		self.train_dir = train_dir
@@ -254,6 +266,16 @@ def main():
 		help='Number of steps in each epoch',
 		required=False
 	)
+	parser.add_argument(
+		'--valid-file',
+		help='Location of validation File',
+		required=False
+	)
+	parser.add_argument(
+		'--model-file',
+		help='Location of weights from model.h5',
+		required=False
+	)
 
 	args = parser.parse_args()
 	arguments = args.__dict__
@@ -282,21 +304,46 @@ def main():
 		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
                 if(arguments['epochs_steps']):
                     steps_per_epoch = int(arguments['epochs_steps'])
-		    model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
                 else:
                     steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
-		    model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
+
+	        model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):
 		if(arguments['predict_dir']):
                     number_of_samples = discover_num_samples(train_dir)
+                # Input_shape from a sample
+                    input_shape = discover_input_shape(train_dir)
                     output_predict = arguments['predict_dir']
-                    bottleneck_features(train_dir, batch_size=batch_size, number_of_samples=number_of_samples, input_shape=(218, 178, 3), output_dir=output_predict, job_type=int(job_type))
+                    bottleneck_features(train_dir, batch_size=batch_size, number_of_samples=number_of_samples,\
+                            input_shape=input_shape, output_dir=output_predict, job_type=int(job_type))
 		else:
 			print("The predict output dir has not been provided.")
 
 			raise ValueError
+        # test / validation
+        elif ( job_type == "2"):
+                if(arguments['valid_file']):
+                    valid_dir = arguments['valid_file']
+                else:
+                    print("Valid file not defined")
+                    raise ValueError
+	    	if(arguments['predict_dir']):
+                    number_of_samples = discover_num_samples(valid_dir)
+
+                # Input_shape from a sample
+                input_shape = discover_input_shape(valid_dir)
+                output_predict = arguments['predict_dir']
+
+		if(arguments['model_file']):
+                    model = define_model(input_shape=input_shape)
+                    model.load_weights(arguments["model_file"])
+                    bottleneck_features(valid_dir, batch_size=batch_size, number_of_samples=number_of_samples,\
+                            input_shape=input_shape, output_dir=output_predict, job_type=int(job_type),\
+                            passing_model=model)
+
+
 
 
 	else:
