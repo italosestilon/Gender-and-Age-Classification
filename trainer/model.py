@@ -8,7 +8,7 @@
 #2017 (c) MIT License
 #
 #TODO:
-#
+#change the number of shape to 4096
 #
 ################################################################
 import argparse
@@ -29,12 +29,12 @@ from tensorflow.python.lib.io import file_io
 
 from keras.applications import vgg16
 
-def get_data(train_dir, batch_size=32, input_shape=(32, 32, 3), shuffle=False, job_type=1):
+def get_data(train_dir, batch_size=32, input_shape=(32, 32, 3), shuffle=False, data_type=1):
 
 	with file_io.FileIO(train_dir +"/id.txt", mode='r') as input_fn:
 		ids = pickle.load(input_fn)
 	
-	generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle=shuffle, train_dir=train_dir, data_type=job_type)
+	generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle=shuffle, train_dir=train_dir, data_type=data_type)
 
 	train_generator = generator.generate(ids)
 
@@ -45,9 +45,11 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	model = Sequential()
 	model.add(Flatten(input_shape=input_shape))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
+
+        # change me to 4096
+	model.add(Dense(30, activation='sigmoid'))
 	model.add(Dropout(0.5))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
+	model.add(Dense(30, activation='sigmoid'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
@@ -55,7 +57,7 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 		weights = np.load(weights_path)
 		model.set_weights(weights)
 
-	sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+	sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
 	model.compile(loss='categorical_crossentropy',
 	          optimizer=sgd,
@@ -63,6 +65,7 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	return model
 
+# Forward on the bottleneck NN
 def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), \
         output_dir="vgg_preditc", job_type=1 ,passing_model = None):
 
@@ -74,9 +77,7 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
             print (" Error type_job in bottleneck_features function or model not defined")
             raise ValueError
 
-	#generator = DataGenerator(dim_x = input_shape[0], dim_y = input_shape[1], dim_z = input_shape[2], batch_size = batch_size, shuffle = False, train_dir=train_dir)
-
-	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, job_type=job_type)
+	predict_generator, ids = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, data_type=job_type)
 
 	j = 0
         error = 0
@@ -183,22 +184,18 @@ class DataGenerator(object):
 			from skimage import io
 		# Generate data
 		for i, ID in enumerate(list_IDs_temp):
-			#print(ID)
-			#print("Entrou para pegar dados do bucket")
-			#print(ID.split('.')[0])
-			#f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0]) + "/" + ID))
-			# Store volume
+                        # Load dataset as np array
 			if(self.data_type == 1):
 				f = BytesIO(file_io.read_file_to_string(self.train_dir +"/" + str(ID[0:2]) + "/" + ID))
 				X[i, :, :, :] = np.load(f)
+                        
+                        # Load dataset as image
 			elif(self.data_type == 0):
 				X[i, :, :, :] = io.imread(self.train_dir +"/" + str(ID[0:2]) + "/" + ID)
 
 			# Store class
 			y[i] = int(ID[0:2])
 
-			#print("joao sucks",y[i])
-		#print("Retornando um batch")
 		return X, self.sparsify(y)
 
 	def sparsify(self, y):
@@ -359,9 +356,12 @@ def main():
 		if(arguments['model_file']):
                     model = define_model(input_shape=input_shape)
                     model.load_weights(arguments["model_file"])
-                    bottleneck_features(valid_dir, batch_size=batch_size, number_of_samples=number_of_samples,\
-                            input_shape=input_shape, output_dir=output_predict, job_type=int(job_type),\
-                            passing_model=model)
+                    valid_generator,_ = get_data(valid_dir, batch_size=number_of_samples, input_shape=input_shape, shuffle=False, data_type=1)
+                    data, target = valid_generator.next() 
+                    loss,acc = model.evaluate(x=data, y=target)
+                    print "----------Result----------"
+                    print " Testing : loss {} , acc : {}".format(loss,acc)
+
 
 
 
