@@ -45,9 +45,9 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 
 	model = Sequential()
 	model.add(Flatten(input_shape=input_shape))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='hard_sigmoid'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
 	model.add(Dropout(0.5))
-	model.add(Dense(input_shape[1]*input_shape[0], activation='hard_sigmoid'))
+	model.add(Dense(input_shape[1]*input_shape[0], activation='sigmoid'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
@@ -104,8 +104,9 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
                         break
 
 
-def train_model(model, train_generator, epochs=20, steps_per_epoch=100):
-	model.fit_generator(train_generator, epochs=epochs,steps_per_epoch=steps_per_epoch )
+def train_model(model, train_generator, epochs=20, steps_per_epoch=100,validation_data=None,validation_steps=None):
+	model.fit_generator(train_generator,\
+                epochs=epochs,steps_per_epoch=steps_per_epoch,validation_data=validation_data,validation_steps=validation_steps )
 
 	return model
 
@@ -311,12 +312,22 @@ def main():
                 print "Input Shape:",input_shape
 		model = define_model(input_shape=input_shape)
 		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
+                # For validation
+                if(arguments['valid_file']):
+                    valid_dir = arguments['valid_file']
+                    valid_generator ,_ =  get_data(valid_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
+                    validation_steps = int(np.ceil(discover_num_samples(valid_dir)/batch_size))
+                else:
+                    valid_generator = None
+                    validation_steps = None
+
                 if(arguments['epochs_steps']):
                     steps_per_epoch = int(arguments['epochs_steps'])
                 else:
                     steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
 
-	        model = train_model(model, train_generator, epochs=epochs, steps_per_epoch=steps_per_epoch)
+	        model = train_model(model, train_generator, epochs=epochs,
+                        steps_per_epoch=steps_per_epoch,validation_data=valid_generator,validation_steps=validation_steps)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):
