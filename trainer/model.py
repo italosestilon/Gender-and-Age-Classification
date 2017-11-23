@@ -8,7 +8,6 @@
 #2017 (c) MIT License
 #
 #TODO:
-#change the number of shape to 4096
 #
 ################################################################
 import argparse
@@ -46,10 +45,9 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 	model = Sequential()
 	model.add(Flatten(input_shape=input_shape))
 
-        # change me to 4096
-	model.add(Dense(30, activation='sigmoid'))
+	model.add(Dense(4096, activation='sigmoid'))
 	model.add(Dropout(0.5))
-	model.add(Dense(30, activation='sigmoid'))
+	model.add(Dense(4096, activation='sigmoid'))
 	model.add(Dropout(0.5))
 	model.add(Dense(2, activation='softmax'))
 
@@ -69,7 +67,7 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
 def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input_shape=(1,32,32), \
         output_dir="vgg_preditc", job_type=1 ,passing_model = None):
 
-        if(job_type == 1):
+        if(job_type == 1 or job_type == 0):
 	    model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
         elif (job_type == 2 and passing_model ):
             model = passing_model
@@ -215,7 +213,7 @@ def discover_num_samples(train_dir = None):
     else:
         return len(num_samples)
 
-def discover_input_shape(train_dir = None):
+def discover_input_shape(train_dir = None,data_type=1):
     if train_dir == None:
         raise IOError("File id.txt Variable train_dir not initialized")
     try:
@@ -225,7 +223,12 @@ def discover_input_shape(train_dir = None):
     else:
 
         sample_path = num_samples[0]
-        sample = np.load(train_dir+"/"+sample_path[0:2]+"/"+sample_path)
+        if (data_type == 0):
+            from skimage import io
+            sample = io.imread(train_dir +"/" + sample_path[0:2] + "/" + sample_path)
+        else:
+            sample = np.load(train_dir+"/"+sample_path[0:2]+"/"+sample_path)
+
         return sample.shape
 
 
@@ -305,7 +308,7 @@ def main():
                     epochs = int(arguments['epochs'])
                 else:
                     epochs = 10
-                input_shape = discover_input_shape(train_dir)
+                input_shape = discover_input_shape(train_dir,int(job_type))
                 print "Input Shape:",input_shape
 		model = define_model(input_shape=input_shape)
 		train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
@@ -331,7 +334,7 @@ def main():
 		if(arguments['predict_dir']):
                     number_of_samples = discover_num_samples(train_dir)
                 # Input_shape from a sample
-                    input_shape = discover_input_shape(train_dir)
+                    input_shape = discover_input_shape(train_dir,int(job_type))
                     output_predict = arguments['predict_dir']
                     bottleneck_features(train_dir, batch_size=batch_size, number_of_samples=number_of_samples,\
                             input_shape=input_shape, output_dir=output_predict, job_type=int(job_type))
@@ -350,7 +353,7 @@ def main():
                     number_of_samples = discover_num_samples(valid_dir)
 
                 # Input_shape from a sample
-                input_shape = discover_input_shape(valid_dir)
+                input_shape = discover_input_shape(valid_dir,int(job_type))
                 output_predict = arguments['predict_dir']
 
 		if(arguments['model_file']):

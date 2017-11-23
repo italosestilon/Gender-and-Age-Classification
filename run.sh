@@ -7,17 +7,14 @@ op=$1
 if [ "$op" = "local" ]; then
 		echo "$op"
 		gcloud ml-engine local train \
-		--job-dir ./output/teste4096 \
+		--job-dir ./output/bestModel \
 		--module-name trainer.model \
 		--package-path ./trainer/ \
 		--\
-		--train-file /data/vgg_predict \
-        --valid-file /data/valid_imagenet \
-		--job-type 2 \
-		--predict-dir /data/validation_predict \
+		--train-file /data/celeb_imagenet\
+		--job-type 1 \
         --batch-size 128 \
-        --model-file output/teste/model.h5\
-        --epochs 80 
+        --epochs 10 
 
 	else 
 		echo "$op"
