@@ -106,8 +106,13 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 
 
 def train_model(model, train_generator, epochs=20, steps_per_epoch=100,validation_data=None,validation_steps=None):
+
+	callbacks = [keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', 
+		verbose=1, save_best_only=False,
+		 save_weights_only=False, mode='auto',
+		  period=1)]
 	model.fit_generator(train_generator,\
-                epochs=epochs,steps_per_epoch=steps_per_epoch,validation_data=validation_data,validation_steps=validation_steps )
+                epochs=epochs,steps_per_epoch=steps_per_epoch,validation_data=validation_data,validation_steps=validation_steps, callbacks=callbacks)
 
 	return model
 
@@ -219,13 +224,15 @@ def discover_input_shape(train_dir = None):
     if train_dir == None:
         raise IOError("File id.txt Variable train_dir not initialized")
     try:
-        num_samples = np.load(train_dir+"/id.txt")
+    	f = BytesIO(file_io.read_file_to_string(train_dir+"/id.txt"))
+        num_samples = np.load(f)
     except IOError:
         print "File id.txt not Found, or not in pickle.dump type"
     else:
 
         sample_path = num_samples[0]
-        sample = np.load(train_dir+"/"+sample_path[0:2]+"/"+sample_path)
+        f = BytesIO(file_io.read_file_to_string(train_dir+"/"+sample_path[0:2]+"/"+sample_path))
+        sample = np.load(f)
         return sample.shape
 
 

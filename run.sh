@@ -11,10 +11,10 @@ if [ "$op" = "local" ]; then
 		--module-name trainer.model \
 		--package-path ./trainer/ \
 		--\
-		--train-file /data/vgg_predict \
-        --valid-file /data/valid_imagenet \
-		--job-type 2 \
-		--predict-dir /data/validation_predict \
+		--train-file gs://$BUCKET/vgg_predict/train \
+        --valid-file gs://$BUCKET/vgg_predict/valid \
+		--job-type 1 \
+		--predict-dir data/validation_predict \
         --batch-size 128 \
         --model-file output/teste/model.h5\
         --epochs 80 
