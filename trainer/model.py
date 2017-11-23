@@ -18,6 +18,8 @@ from keras.optimizers import SGD
 from keras.models import model_from_json
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
+
+from keras import callbacks
 from io import BytesIO
 
 import cPickle
@@ -103,14 +105,15 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
                         break
 
 
-def train_model(model, train_generator, epochs=20, steps_per_epoch=100,validation_data=None,validation_steps=None):
-
-	callbacks = [keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', 
-		verbose=1, save_best_only=False,
-		 save_weights_only=False, mode='auto',
-		  period=1)]
+def train_model(model, train_generator, epochs=20, steps_per_epoch=100,validation_data=None,validation_steps=None, output_dir=None):
+	callbacks_ = None
+	if output_dir is not None:
+		callbacks_ = [callbacks.ModelCheckpoint(output_dir+"/weights.{epoch:02d}-{val_loss:.2f}.hdf5", monitor='val_loss', 
+			verbose=1, save_best_only=False,
+			 save_weights_only=False, mode='auto',
+			  period=1)]
 	model.fit_generator(train_generator,\
-                epochs=epochs,steps_per_epoch=steps_per_epoch,validation_data=validation_data,validation_steps=validation_steps, callbacks=callbacks)
+                epochs=epochs,steps_per_epoch=steps_per_epoch,validation_data=validation_data,validation_steps=validation_steps, callbacks=callbacks_)
 
 	return model
 
@@ -333,7 +336,7 @@ def main():
                     steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
 
 	        model = train_model(model, train_generator, epochs=epochs,
-                        steps_per_epoch=steps_per_epoch,validation_data=valid_generator,validation_steps=validation_steps)
+                        steps_per_epoch=4,validation_data=valid_generator,validation_steps=validation_steps, output_dir=job_dir)
 		save_model(model, job_dir)
 
 	elif(job_type == "0"):
