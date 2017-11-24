@@ -11,12 +11,12 @@ if [ "$op" = "local" ]; then
 		--module-name trainer.model \
 		--package-path ./trainer/ \
 		--\
-		--train-file /home/estilon/datasets/valid_output \
-        --valid-file /home/estilon/datasets/valid_output \
-		--job-type 1 \
-		--predict-dir data/validation_predict \
+		--train-file /home/estilon/datasets/Adience/gender_raw_adience_divided/valid  \
+        --valid-file test_predict \
+		--job-type 0 \
+		--predict-dir /home/estilon/datasets/Adience/valid_imagenet_adience \
         --batch-size 128 \
-        --model-file output/teste/model.h5\
+        --model-file /home/estilon/models/bestModel/model.h5\
         --epochs 80 
 
 	else 
