@@ -6,11 +6,8 @@ op=$1
 # Choose option
 if [ "$op" = "local" ]; then
 		echo "$op"
-		gcloud ml-engine local train \
+		python2 trainer/model.py \
 		--job-dir ./output/teste4096 \
-		--module-name trainer.model \
-		--package-path ./trainer/ \
-		--\
 		--train-file gs://$BUCKET/vgg_predict/train \
         --valid-file gs://$BUCKET/vgg_predict/valid \
 		--job-type 1 \

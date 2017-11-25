@@ -1,7 +1,7 @@
 ################################################################
 # Project: Neural Network for age and gender estimation 
 # Authors Italos __complete me__ Estilon
-#         João Phillipe Cardenuto 
+#         Joao Phillipe Cardenuto 
 # Universidade Estadual de Campinas
 #
 #'''
