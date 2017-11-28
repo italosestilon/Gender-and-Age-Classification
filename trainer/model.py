@@ -106,8 +106,8 @@ def bottleneck_features(train_dir, batch_size=32, number_of_samples=20000, input
 def train_model(model, train_generator, epochs=20, steps_per_epoch=100,validation_data=None,validation_steps=None, output_dir=None):
     callbacks_ = None
     if output_dir is not None:
-        callbacks_ = [callbacks.ModelCheckpoint(output_dir+"/weights.{epoch:02d}-{val_loss:.2f}.hdf5", monitor='val_loss', 
-            verbose=1, save_best_only=False,
+        callbacks_ = [callbacks.ModelCheckpoint(output_dir+"/weights.{epoch:02d}-{val_acc:.2f}.hdf5",
+        monitor='val_acc',verbose=1, save_best_only=True,
              save_weights_only=False, mode='auto',
               period=1)]
     model.fit_generator(train_generator,\
@@ -305,7 +305,7 @@ def main():
     else:
         print("(W) Batch_size not defined and will be set equal 32")
         batch_size=32
-    print("Batch Size:",batch_size)
+    print "Batch Size:",batch_size
     #train_generator = get_data(train_dir)
     
 
@@ -315,27 +315,26 @@ def main():
             epochs = int(arguments['epochs'])
         else:
             epochs = 10
-            input_shape = discover_input_shape(train_dir,int(job_type))
-            print("Input Shape:",input_shape)
-            model = define_model(input_shape=input_shape)
-            train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
-            # For validation
-            if(arguments['valid_file']):
-                valid_dir = arguments['valid_file']
-                valid_generator ,_ =  get_data(valid_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
-                validation_steps = int(np.ceil(discover_num_samples(valid_dir)/batch_size))
-            else:
-                valid_generator = None
-                validation_steps = None
+        input_shape = discover_input_shape(train_dir,int(job_type))
+        print("Input Shape:",input_shape)
+        model = define_model(input_shape=input_shape)
+        train_generator, _ = get_data(train_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
+        # For validation
+        if(arguments['valid_file']):
+            valid_dir = arguments['valid_file']
+            valid_generator ,_ =  get_data(valid_dir, batch_size=batch_size, input_shape=input_shape, shuffle=True)
+            validation_steps = int(np.ceil(discover_num_samples(valid_dir)/batch_size))
+        else:
+            valid_generator = None
+            validation_steps = None
 
-            if(arguments['epochs_steps']):
-                steps_per_epoch = int(arguments['epochs_steps'])
-            else:
-                steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
-
-            model = train_model(model, train_generator, epochs=epochs,
+        if(arguments['epochs_steps']):
+            steps_per_epoch = int(arguments['epochs_steps'])
+        else:
+            steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
+        model = train_model(model, train_generator, epochs=epochs,
                         steps_per_epoch=4,validation_data=valid_generator,validation_steps=validation_steps, output_dir=job_dir)
-            save_model(model, job_dir)
+        save_model(model, job_dir)
 
     elif(job_type == "0"):
         if(arguments['predict_dir']):
@@ -372,9 +371,43 @@ def main():
                     print("----------Result----------")
                     print(" Testing : loss {} , acc : {}".format(loss,acc))
 
+    if(job_type == "3"):
+        if(arguments['valid_file']):
+            valid_dir = arguments['valid_file']
+        else:
+            print("Valid file not defined")
+            raise ValueError
+        if(arguments['predict_dir']):
+            number_of_samples = discover_num_samples(valid_dir)
+            # Input_shape from a sample
+            input_shape = discover_input_shape(valid_dir,int(job_type))
+            output_predict = arguments['predict_dir']
+        else:
+            print " Predict dir not defined"
+            raise ValueError
 
-
-
+        if(arguments['model_file']):
+           print "Input Shape",input_shape
+           # load json and create model
+           model_json_dir = str(arguments['model_file'])
+           json_file = file(model_json_dir+'/model.json', 'r')
+           loaded_model_json = json_file.read()
+           json_file.close()
+           loaded_model = model_from_json(loaded_model_json)
+           # load weights into new model
+           loaded_model.load_weights(model_json_dir+"/model.h5")
+           sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+           loaded_model.compile(loss='categorical_crossentropy',
+              optimizer=sgd,
+              metrics=['accuracy'])
+        else:
+            print "Model not set"
+            raise ValueError
+        valid_generator,_ = get_data(valid_dir, batch_size=number_of_samples, input_shape=input_shape, shuffle=False, data_type=1)
+        data, target = valid_generator.next() 
+        loss,acc = loaded_model.evaluate(x=data, y=target)
+        print("----------Result----------")
+        print(" Testing : loss {} , acc : {}".format(loss,acc))
 
     else:
         print("Invalid job type.")

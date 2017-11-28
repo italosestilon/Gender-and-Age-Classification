@@ -7,14 +7,14 @@ op=$1
 if [ "$op" = "local" ]; then
 		echo "$op"
 		python2 trainer/model.py \
-		--job-dir ./output/teste4096 \
-		--train-file gs://$BUCKET/vgg_predict/train \
-        --valid-file gs://$BUCKET/vgg_predict/valid \
-		--job-type 1 \
-		--predict-dir data/validation_predict \
-        --batch-size 128 \
-        --model-file output/teste/model.h5\
-        --epochs 80 
+		--job-dir ./output/adience_output_CELEB\
+		--train-file /home/estilon/datasets/Adience/train_imagenet_adience \
+        --valid-file /home/estilon/datasets/valid_output\
+		--job-type 3 \
+        --batch-size 32 \
+        --epochs 20 \
+        --model-file ~/models/bestModel \
+        --predict-dir /home/estilon/datasets/valid_output\
 
 	else 
 		echo "$op"
