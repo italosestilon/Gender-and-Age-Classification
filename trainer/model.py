@@ -9,6 +9,7 @@
 #
 #TODO:
 #
+# Numero de classe alterando para 8 em sparsify manualmnete, automatizar processo
 ################################################################
 import argparse
 from keras.models import Sequential
@@ -46,9 +47,9 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
     model = Sequential()
     model.add(Flatten(input_shape=input_shape))
 
-    model.add(Dense(4096, activation='relu'))
+    model.add(Dense(4096, activation='sigmoid'))
     model.add(Dropout(0.5))
-    model.add(Dense(4096, activation='relu'))
+    model.add(Dense(4096, activation='sigmoid'))
     model.add(Dropout(0.5))
     model.add(Dense(8, activation='softmax'))
 
@@ -59,6 +60,7 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
     sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
     model.compile(loss='categorical_crossentropy',
+              #loss='categorical_crossentropy',
               optimizer=sgd,
               metrics=['accuracy'])
 
@@ -208,7 +210,7 @@ class DataGenerator(object):
 
     def sparsify(self, y):
         'Returns labels in binary NumPy array'
-        n_classes = 2 # Enter number of classes
+        n_classes = 8 # Enter number of classes
         return np.array([[1 if y[i] == j else 0 for j in range(n_classes)]
             for i in range(y.shape[0])])
         #print("terminou de sparsify", y)
@@ -336,8 +338,9 @@ def main():
             steps_per_epoch = int(arguments['epochs_steps'])
         else:
             steps_per_epoch = int(np.ceil(discover_num_samples(train_dir)/batch_size))
+
         model = train_model(model, train_generator, epochs=epochs,
-                        steps_per_epoch=4,validation_data=valid_generator,validation_steps=validation_steps, output_dir=job_dir)
+                        steps_per_epoch=steps_per_epoch,validation_data=valid_generator,validation_steps=validation_steps, output_dir=job_dir)
         save_model(model, job_dir)
 
     elif(job_type == "0"):
