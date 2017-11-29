@@ -195,7 +195,11 @@ class DataGenerator(object):
                         
                         # Load dataset as image
             elif(self.data_type == 0):
-                X[i, :, :, :] = io.imread(self.train_dir +"/" + str(ID[0:2]) + "/" + ID)
+                try:
+                    X[i, :, :, :] = io.imread(self.train_dir +"/" + str(ID[0:2]) + "/" + ID)
+                except:
+                    print self.train_dir +"/" + str(ID[0:2]) + "/" + ID
+                    raise ValueError
 
             # Store class
             y[i] = int(ID[0:2])
@@ -372,7 +376,7 @@ def main():
                     print("----------Result----------")
                     print(" Testing : loss {} , acc : {}".format(loss,acc))
 
-    if(job_type == "3"):
+    elif(job_type == "3"):
         if(arguments['valid_file']):
             valid_dir = arguments['valid_file']
         else:
