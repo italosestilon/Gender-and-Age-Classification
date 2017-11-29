@@ -46,11 +46,11 @@ def define_model(weights_path=None, input_shape=(32,32,3)):
     model = Sequential()
     model.add(Flatten(input_shape=input_shape))
 
-    model.add(Dense(4096, activation='sigmoid'))
+    model.add(Dense(4096, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(4096, activation='sigmoid'))
+    model.add(Dense(4096, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(2, activation='softmax'))
+    model.add(Dense(8, activation='softmax'))
 
     if weights_path:
         weights = np.load(weights_path)
@@ -341,6 +341,7 @@ def main():
                     number_of_samples = discover_num_samples(train_dir)
                 # Input_shape from a sample
                     input_shape = discover_input_shape(train_dir,int(job_type))
+                    print "Input Shape:",input_shape
                     output_predict = arguments['predict_dir']
                     bottleneck_features(train_dir, batch_size=batch_size, number_of_samples=number_of_samples,\
                             input_shape=input_shape, output_dir=output_predict, job_type=int(job_type))
